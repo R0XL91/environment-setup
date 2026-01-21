@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MSG_FILE="${1:-}"
+
+if [[ -z "$MSG_FILE" || ! -f "$MSG_FILE" ]]; then
+  echo "ERROR: commit-msg hook did not receive a valid message file."
+  exit 1
+fi
+
+# --- Config ---
+# Types based on your summary (extend if you want)
+ALLOWED_TYPES_REGEX='feat|fix|docs|style|refactor|perf|test|build|ci|chore'
+
+# Scope: recommended lowercase + digits and common separators
+SCOPE_REGEX='[a-z0-9][a-z0-9._-]*'
+# --------------------------------------------
+
+# 1) Grab the first real header line: first non-empty, non-comment (#) line
+HEADER="$(
+  awk '
+    BEGIN { header="" }
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { next }
+    { print; exit }
+  ' "$MSG_FILE"
+)"
+
+if [[ -z "$HEADER" ]]; then
+  echo "ERROR: empty commit message (no valid header found)."
+  exit 1
+fi
+
+# 2) Allow Git-generated commits that don't follow Conventional Commits
+#    (merge commits, auto revert messages)
+if [[ "$HEADER" == Merge\ * ]]; then
+  exit 0
+fi
+if [[ "$HEADER" == Revert\ \"* ]]; then
+  exit 0
+fi
+
+# 3) Support rebase autosquash prefixes: "fixup! " / "squash! "
+if [[ "$HEADER" == fixup!\ * ]]; then
+  HEADER="${HEADER#fixup! }"
+elif [[ "$HEADER" == squash!\ * ]]; then
+  HEADER="${HEADER#squash! }"
+fi
+
+# 4) Validate header: <type>(<scope>)?!?: <description>
+#    - type: one of allowed (case-insensitive)
+#    - optional scope: (xxx)
+#    - optional ! right before :
+#    - requires ": " and a non-empty description
+shopt -s nocasematch
+
+HEADER_REGEX="^(${ALLOWED_TYPES_REGEX})(\\(${SCOPE_REGEX}\\))?(!)?:[[:space:]].+"
+
+if [[ ! "$HEADER" =~ $HEADER_REGEX ]]; then
+  cat <<EOF
+ERROR: commit message does NOT follow Conventional Commits.
+
+Expected format:
+  <type>[optional scope][!]: <description>
+
+Allowed types:
+  ${ALLOWED_TYPES_REGEX//|/, }
+
+Examples:
+  feat(auth): add OAuth2 login support
+  fix(api)!: change pagination defaults
+  docs: update README
+
+Your header was:
+  $HEADER
+
+EOF
+  exit 1
+fi
+
+# 5) If a scope exists, enforce lowercase (style rule aligned with the checklist)
+#    (The spec isn't case-sensitive, but this rule helps consistency.)
+SCOPE_CAPTURE="$(sed -nE 's/^([A-Za-z]+)\(([^\)]+)\)(!?)?:.*/\2/p' <<< "$HEADER" || true)"
+if [[ -n "$SCOPE_CAPTURE" ]] && [[ "$SCOPE_CAPTURE" =~ [A-Z] ]]; then
+  cat <<EOF
+ERROR: scope must be lowercase.
+  Current scope: ($SCOPE_CAPTURE)
+
+Example:
+  feat(auth): ...
+EOF
+  exit 1
+fi
+
+# 6) If BREAKING CHANGE appears, it must be exactly uppercase "BREAKING CHANGE:"
+awk '
+  BEGIN { bad=0 }
+  /^[[:space:]]*[Bb][Rr][Ee][Aa][Kk][Ii][Nn][Gg][[:space:]]+[Cc][Hh][Aa][Nn][Gg][Ee]:/ {
+    if ($0 !~ /^[[:space:]]*BREAKING CHANGE:/) bad=1
+  }
+  END { exit bad }
+' "$MSG_FILE" || {
+  cat <<EOF
+ERROR: "BREAKING CHANGE:" must be written in exact uppercase.
+
+Correct:
+  BREAKING CHANGE: ...
+
+EOF
+  exit 1
+}
+
+exit 0

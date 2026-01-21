@@ -1,0 +1,73 @@
+#
+# # mkcd - Make directory and access it (can be multilevel)
+# # usage: mkcd <folder>
+#
+mkcd ()
+{
+  mkdir -p "$1" && cd "$1"
+}
+
+#
+# # check_port - Check if the port is used
+# # usage: check_port <port number>
+#
+check_port()
+{
+  sudo lsof -i -P -n | grep ":$1"
+}
+
+#
+# # ex - Archive extractor
+# # usage: ex <file>
+# # from: https://github.com/ChrisTitusTech/zsh/blob/master/aliasrc
+#
+ex ()
+{
+  if [ -f $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.tar.xz)    tar xJf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip $1     ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip $1      ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via ex()" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+alias grep='grep --color=auto'
+alias sgrep='grep -R -n -H -C 5 --exclude-dir={.git,.svn,CVS}'
+
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+
+alias ls='ls --color=auto'
+alias ll='ls -lh'
+alias la='ls -lha'
+
+alias myip="curl ifconfig.me"          # Mostrar IP pública
+alias ports="sudo netstat -tulanp"     # Ver puertos abiertos
+alias pingg="ping google.com"          # Hacer ping a Google
+alias wget="wget -c"                   # Permitir reanudar descargas
+alias curljson="curl -H 'Content-Type: application/json'" # Curl con JSON
+
+alias df="df -h"                      # Espacio en disco human-readable
+alias du="du -h"                      # Uso de disco human-readable
+alias free="free -h"                  # Memoria human-readable
+alias chmodx="chmod +x"               # Hacer archivos ejecutables
+alias mkr="mkdir -p"                  # Crear directorios recursivamente
+
+# Custom aliases
+if [[ -f ~/.aliases.local ]]; then
+  source ~/.aliases.local
+fi

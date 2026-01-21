@@ -1,0 +1,22 @@
+[user]
+	name = Raul Leal
+[color]
+    ui = auto
+[core]
+    attributesfile = ~/.gitattributes
+    pager = diff-so-fancy | less --tabs=4 -RF
+[interactive]
+    diffFilter = "diff-so-fancy --patch"
+[alias]
+    id = "rev-parse HEAD"
+    out = "log --pretty=oneline --abbrev-commit --graph @{u}.."
+    in = "!git fetch && git log --pretty=oneline --abbrev-commit --graph ..@{u}"
+[credential]
+    helper = cache
+[init]
+	defaultBranch = main
+[merge]
+    tool = meld
+[mergetool "meld"]
+    cmd = meld "$LOCAL" "$REMOTE" --output="$MERGED"
+    trustExitCode = false
